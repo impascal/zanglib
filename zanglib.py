@@ -83,7 +83,7 @@ def check_and_test():
         print(f"{test:12}: {'PASS' if status else 'FAIL'}")
 
 
-def utrisol(R: np._ArrayFloat64_co, b: np._ArrayFloat64_co):
+def utrisol(R: np._ArrayFloat64_co, b: np._ArrayFloat64_co) -> np._ArrayFloat64_co:
     """
     Solve linear system Rx = b in which R is an upper triangular matrix
     and b is the vector of constant terms using backward substution algorithm.
@@ -91,10 +91,18 @@ def utrisol(R: np._ArrayFloat64_co, b: np._ArrayFloat64_co):
     and output parameter.
     """
     [n, m] = R.shape
-    if (R.shape[0] != R.shape[1]) or len(R.shape) > 2:
+    if (n != m) or len(R.shape) > 2:
         raise ValueError("R must be a n x n upper triangular matrix...")
 
-    np.float64(R)  # Convert R to float64 just to be sure
+    if len(b.shape) > 1:
+        raise ValueError("b must be a one dimensional array...") 
+
+    if len(b) != n:
+        raise ValueError("b must be and R must have the same number of rows...")
+
+    # Convert everything to float64 just to be sure
+    np.float64(R)
+    np.float64(b)
 
     eps = np.finfo(np.float64).eps * norm(R, np.inf)
     if any(np.diag(R) < eps):
@@ -104,5 +112,38 @@ def utrisol(R: np._ArrayFloat64_co, b: np._ArrayFloat64_co):
         b[i] = b[i] / R[i, i]
         R[0:i, i] *= b[i]
         b[0:i] -= R[0:i, i]
+
+    return b
+
+def ltrisol(L: np._ArrayFloat64_co, b: np._ArrayFloat64_co) -> np._ArrayFloat64_co:
+    """
+    Solve linear system Lx = b in which R is a lower triangular matrix
+    and b is the vector of constant terms using forward substution algorithm.
+    Both R and b are not preserved, b can be used both as return value
+    and output parameter.
+    """
+
+    [n, m] = L.shape
+    if (n != m) or len(L.shape) > 2:
+        raise ValueError("R must be a n x n upper triangular matrix...")
+
+    if len(b.shape) > 1:
+        raise ValueError("b must be a one dimensional array...") 
+
+    if len(b) != n:
+        raise ValueError("b must be and R must have the same number of rows...")
+
+    # Convert everything to float64 just to be sure
+    np.float64(L)
+    np.float64(b)
+
+    eps = np.finfo(np.float64).eps * norm(L, np.inf)
+    if any(np.diag(L) < eps):
+        raise ValueError("Some value of R are numerically too little...")
+
+    for i in range(n):
+        b[i] = b[i] / L[i, i]
+        L[i+1:n, i] *= b[i]
+        b[i+1:n] -= L[i+1:n, i]
 
     return b
