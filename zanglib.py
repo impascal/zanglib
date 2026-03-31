@@ -81,7 +81,6 @@ def check_and_test():
     for test, status in test_results.items():
         print(f"{test:12}: {'PASS' if status else 'FAIL'}")
 
-import numpy as np
 def invupper(R):
     """
     invupper - Sovrascrive una matrice triangolare superiore invertibile con la propria inversa
