@@ -7,7 +7,6 @@ import sys
 import numpy as np
 from numpy.linalg import norm
 
-
 def check_and_test():
     # 1. Python Version Check
     print("--- 1. System Version Check ---")
@@ -82,6 +81,27 @@ def check_and_test():
     for test, status in test_results.items():
         print(f"{test:12}: {'PASS' if status else 'FAIL'}")
 
+import numpy as np
+def invupper(R):
+    """
+    invupper - Sovrascrive una matrice triangolare superiore invertibile con la propria inversa
+    SYNOPSIS: R = invupper(R)
+    INPUT: R (float array) - Matrice triangolare superiore da invertire
+    OUTPUT: R (float array) - La matrice in input sovrascritta con la propria inversa
+    """
+    # Aggiungere opportuni controlli sull’input
+    [m, n] = R.shape
+    if not np.diag(R).all(): # R ha almeno un elemento diagonale nullo
+        raise ValueError("elementi nulli sulla diagonale: matrice R non invertibile")
+    if R.dtype != np.float64: 
+        R = np.float64( R ) # per avere massima accuratezza nei calcoli
+        
+    R[n-1, n-1] = 1.0 / R[n-1, n-1]
+    for i in range( n-2, -1, -1 ):
+        R[i, i] = 1.0 / R[i, i]
+        for j in range( n-1, i, -1 ):
+            R[i, j] = -np.dot( R[i, i+1 : j+1 ], R[ i+1 : j+1, j] ) * R[i, i]
+    return R
 
 def utrisol(R: np.ndarray, b: np.ndarray):
     """
