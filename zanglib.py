@@ -170,45 +170,50 @@ def ltrisol(L: np.ndarray, b: np.ndarray):
         L[i + 1 : n, i] *= b[i]
         b[i + 1 : n] -= L[i + 1 : n, i]
 
-def gaussDiag(A: np.ndarray, b: np.ndarray) -> int:
+def gaussDiag(A: np.ndarray, b: np.ndarray) -> np.float64:
     """
     In-place LR factorization of A using Gauss elimination algorithm
-    with diagonal strategy. Solution (if unique) will be placed in b
+    with diagonal strategy. Solution (if A non-singular) will be placed in b
 
-    Returns the number of steps the algorithm achieved before stopping,
-    if steps == A.shape[0] a solution has been found
+    Returns det(A), if 0 then A is singular and his pseudorank(A) != rank([A|b])
     """
     n = A.shape[0]
     
     np.float64(A)
     np.float64(b)
 
-    eps = np.finfo(np.float64).eps
-
-    I = np.eye(n, n)
+    tol = np.finfo(np.float64).eps * norm(A, np.inf)
+    L = np.eye(n, dtype=np.float64)
 
     for i in range(n - 1):
-        if np.abs(A[i,i]) < eps:
-            return i
+        # check on pivot
+        if np.abs(A[i,i]) < tol:
+            return 0
 
-        m = A[i+1:n, i] / A[i,i] # array dei moltiplicatori 
+        # multiplicator arrays
+        m = A[i+1:, i] / A[i,i]
 
-        # trasformazione elementare di gauss compatta 
-        # (assegno ad una identità, sotto la diagonale, nella colonna i-esima i moltiplicatori
-        # con segno cambiato
-        L = np.eye(n, dtype=np.float64)
-        L[i+1:n, i] = - m
+        # elementar gauss transformation of dimension n - i
+        L[i+1:, i] = - m
 
-        # applico la trasformazione elementare 
-        np.matmul(L, A, out=A)
-        np.matmul(L, b, out=b)
+        # apply elementar transformartion on submatrix of A  
+        np.matmul(L[i:, i:], A[i:, i:], out=A[i:, i:])
+        # apply elementar transformation on subvector of b
+        np.matmul(L[i:, i:], b[i:], out=b[i:])
 
         # nella colonna i-esima inserisco la rispettiva colonna della fattorizzazione
         # calcolata come l'inverso della trasformazione elementare
-        A[i+1:n, i] = m
+        A[i+1: , i] = m
 
-    if np.abs(A[n-1,n-1]) < eps:
-        return n - 1
+    if np.abs(A[n-1,n-1]) < tol:
+        return 0
 
+    # solve Rx = y
     utrisol(np.triu(A), b)
-    return n
+
+    # compute determinant
+    det = 1
+    for i in range(n):
+        det *= A[i,i]
+
+    return det
