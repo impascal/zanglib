@@ -6,11 +6,11 @@ from matplotlib import pyplot as plt
 def main():
     rnd = np.random.default_rng()
     
-    n_max = 200
-    X = np.empty(200)
-    y = np.empty(200)
+    n_max = 300
+    X = np.empty(n_max)
+    y = np.empty(n_max)
 
-    for i in range(200):
+    for i in range(n_max):
         dim = i+1
         X[i] = dim
 

@@ -183,7 +183,6 @@ def gaussDiag(A: np.ndarray, b: np.ndarray) -> np.float64:
     np.float64(b)
 
     tol = np.finfo(np.float64).eps * norm(A, np.inf)
-    L = np.eye(n, dtype=np.float64)
 
     for i in range(n - 1):
         # check on pivot
@@ -194,12 +193,13 @@ def gaussDiag(A: np.ndarray, b: np.ndarray) -> np.float64:
         m = A[i+1:, i] / A[i,i]
 
         # elementar gauss transformation of dimension n - i
-        L[i+1:, i] = - m
+        L = np.eye(n - i, dtype=np.float64)
+        L[1:, 0] = - m
 
         # apply elementar transformartion on submatrix of A  
-        np.matmul(L[i:, i:], A[i:, i:], out=A[i:, i:])
+        np.matmul(L, A[i:, i:], out=A[i:, i:])
         # apply elementar transformation on subvector of b
-        np.matmul(L[i:, i:], b[i:], out=b[i:])
+        np.matmul(L, b[i:], out=b[i:])
 
         # nella colonna i-esima inserisco la rispettiva colonna della fattorizzazione
         # calcolata come l'inverso della trasformazione elementare
