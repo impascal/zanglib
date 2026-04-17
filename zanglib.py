@@ -102,41 +102,29 @@ def invupper(R):
             R[i, j] = -np.dot( R[i, i+1 : j+1 ], R[ i+1 : j+1, j] ) * R[i, i]
     return R
 
-def utrisol(R: np.ndarray, b: np.ndarray):
+def utrisol(R, b):
     """
     Solve linear system Rx = b using backward subtitution
+    R is maintained and solution is put in b
     PARAMETERS:
         R: Numpy upper triangular matrix
         b: Numpy 1D array
     """
 
-    if not isinstance(R, np.ndarray):
-        raise TypeError("R must be a Numpy ndarray...")
+    n, m = R.shape
+    if n != m:
+        raise ValueError("R must be a quadrat matrix..")
+    
+    if b.shape[0] != n:
+        raise ValueError("b must have the same number of rows as R...")
 
-    if not isinstance(b, np.ndarray):
-        raise TypeError("b must be a NumPy array...") 
-
-    if len(R.shape) > 2 or R.shape[0] != R.shape[1]:
-        raise ValueError("R must be a n x n upper triangular matrix...")
-
-    if len(b.shape) > 1:
-        raise ValueError("b must be a one dimensional array...")
-
-    if b.shape[0] != R.shape[0]:
-        raise ValueError("b must be and R must have the same number of rows...")
-
-    # Convert everything to float64 just to be sure
-    np.float64(R)
-    np.float64(b)
-
-    eps = np.finfo(np.float64).eps
+    eps = np.finfo(np.float64).eps * norm(R, np.inf)
     if any(np.abs(np.diag(R)) < eps):
-        raise ValueError("Some value of R are numerically too little...")
+        raise ValueError("Some value of R are numerically too small...")
 
     for i in range(R.shape[0] - 1, -1, -1):
-        b[i] = b[i] / R[i, i]
-        R[0:i, i] *= b[i]
-        b[0:i] -= R[0:i, i]
+        b[i] /= R[i, i]
+        b[0:i] -= R[0:i, i] * b[i]
 
 
 def ltrisol(L: np.ndarray, b: np.ndarray):
@@ -170,50 +158,28 @@ def ltrisol(L: np.ndarray, b: np.ndarray):
         L[i + 1 : n, i] *= b[i]
         b[i + 1 : n] -= L[i + 1 : n, i]
 
-def gaussDiag(A: np.ndarray, b: np.ndarray) -> np.float64:
+def gaussDiag(A: np.ndarray) -> np.float64:
     """
     In-place LR factorization of A using Gauss elimination algorithm
     with diagonal strategy. Solution (if A non-singular) will be placed in b
 
     Returns det(A), if 0 then A is singular and his pseudorank(A) != rank([A|b])
     """
-    n = A.shape[0]
+    n, m = A.shape[0]
     
     np.float64(A)
-    np.float64(b)
-
     tol = np.finfo(np.float64).eps * norm(A, np.inf)
 
-    for i in range(n - 1):
-        # check on pivot
-        if np.abs(A[i,i]) < tol:
-            return 0
+    for i in range(0, min(n, m) - 1):
+        # check for too small pivot
+        if np.abs(A[i,i]) < tol: return 0
 
-        # multiplicator arrays
-        m = A[i+1:, i] / A[i,i]
+        # in-place multiplicator vector
+        A[i+1:, i] /= A[i,i]
+        A[(i+1) : , (i+1): ] -= np.outer(A[(i+1): , i], A[i, (i+1): ])
 
-        # elementar gauss transformation of dimension n - i
-        L = np.eye(n - i, dtype=np.float64)
-        L[1:, 0] = - m
+    nn = min(n, m)
+    L = np.tril(A[:, :nn], -1)
+    L[ range(nn), range(nn) ] = 1.0
 
-        # apply elementar transformartion on submatrix of A  
-        np.matmul(L, A[i:, i:], out=A[i:, i:])
-        # apply elementar transformation on subvector of b
-        np.matmul(L, b[i:], out=b[i:])
-
-        # nella colonna i-esima inserisco la rispettiva colonna della fattorizzazione
-        # calcolata come l'inverso della trasformazione elementare
-        A[i+1: , i] = m
-
-    if np.abs(A[n-1,n-1]) < tol:
-        return 0
-
-    # solve Rx = y
-    utrisol(np.triu(A), b)
-
-    # compute determinant
-    det = 1
-    for i in range(n):
-        det *= A[i,i]
-
-    return det
+    return L, np.triu(A, k=0)

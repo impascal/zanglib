@@ -4,33 +4,17 @@ from timeit import default_timer as timer
 from matplotlib import pyplot as plt
 
 def main():
-    rnd = np.random.default_rng()
-    
-    n_max = 300
-    X = np.empty(n_max)
-    y = np.empty(n_max)
+    DIM = 800
 
-    for i in range(n_max):
-        dim = i+1
-        X[i] = dim
+    A = np.random.randn(DIM, DIM)
+    x = np.ones(DIM, dtype=np.float64)
+    b = A @ x
 
-        # construction of test problem
-        A = rnd.uniform(size=(dim, dim))
-        x = np.ones(dim)
-        b = np.matmul(A, x)
+    start = timer()
+    det = gaussDiag(A, b)
+    stop = timer()
 
-        start = timer()
-        res = gaussDiag(A, b)
-        stop = timer()
-        
-        y[i] = stop - start
-
-    # plot data
-    plt.title("Gaussian eliminination algorithm time series vs Matrix dimension")
-    plt.plot(X, y, "b")
-    plt.xlabel("Dimension (nxn)")
-    plt.ylabel("Time (s)")
-    plt.show()
+    print(f"Solution expected:\n{x} \nSolution found:\n{b}\nTime needed: {stop - start:.3f} s")
 
 if __name__ == "__main__":
     main()
