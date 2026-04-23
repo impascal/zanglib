@@ -319,36 +319,27 @@ def qrfact(A):
     return Q, np.triu(A)
 
 
-def gaussjordan(A):
-    """Inversa di una matrice con Gauss-Jordan + pivoting parziale"""
-
-    m, n = A.shape
-    if m != n:  # matrice non quadrata, non invertibile...
-        raise ValueError("Matrice non quadrata, quindi non invertibile...")
-
-    np.float64(A)
-    tol = np.finfo(np.float64).eps * norm(A, np.inf)
-
-    p = np.arange(m, dtype=np.int64)
-
-    A = np.column_stack((A, np.eye(m)))
-
-    for k in range(m):
-        piv_i = np.abs(A[:, k]).argmax()
-        if np.abs(A[piv_i, k]) < tol:
-            raise ValueError(
-                "Pivot troppo piccolo, matrice non numericamente invertibile..."
-            )
-
-        if piv_i != k:  # esegui permutazione di righe
-            A[piv_i, :], A[k, :] = A[k, :], A[piv_i]
-            p[piv_i], p[k] = p[k], p[piv_i]
-
-        idx = np.hstack((np.arange(0, k), np.arange(k + 1, m)))
-
-        # calcolo in-place dei moltiplicatori
-        A[idx, k] /= A[k, k]
-        # applicazione trasformazione
-        A[idx, k + 1 :] -= np.outer(A[idx, k], A[k, (k + 1) :])
-
-    A = np.array(A[k, range(n, 2 * n)] / A[k, k] for k in range(m))
+def gaussjordan( A ):
+# gaussjordan - Algoritmo di Gauss-Jordan per il calcolo dell’inversa (non sovrascrive A)
+# SINOPSYS: Ainv = gaussjordan( A )
+# OUTPUT: Ainv, matrice inversa di A (se e’ calcolabile)
+    m, n = A.shape; tol = np.finfo( np.float64 ).eps * norm(A, np.inf)
+    if ( m != n ): 
+        raise ValueError("matrice non quadrata")
+        # si effettua una copia per non sovrascrivere A e si assembla direttamente [ A, I ]
+    A = np.c_[ np.float64( A.copy() ), np.eye( m ) ]
+    for k in range( m ):
+    # indice del PRIMO elemento sottodiagonale di modulo massimo nella k-esima colonna
+        i = abs( A[k:, k] ).argmax() + k
+        if ( i != k ): # scambio delle righe k-esima e i-esima
+            A[ [k, i], : ] = A[ [i, k], : ]
+            # calcolo e memorizzazione dei moltiplicatori
+        if ( abs( A[k, k] ) > tol ):
+            ind = np.r_[ np.arange(k), np.arange(k+1, m) ]
+            A[ind, k] /= A[k, k]
+            # operazione di base di livello 2: aggiornamento mediante diade
+            A[ ind, (k+1): ] -= np.outer( A[ ind, k ], A[ k, (k+1): ] )
+        else: # se il pivot e’ troppo piccolo, la matrice e’ NON invertibile numericamente
+            raise ValueError(f"elemento pivot di modulo troppo piccolo (< tol = {tol})")
+    
+    return np.array( [ A[k, range(n, 2*n)] / A[k, k] for k in range( m ) ] )
