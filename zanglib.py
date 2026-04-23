@@ -7,6 +7,7 @@ import sys
 import numpy as np
 from numpy.linalg import norm
 
+
 def check_and_test():
     # 1. Python Version Check
     print("--- 1. System Version Check ---")
@@ -81,6 +82,7 @@ def check_and_test():
     for test, status in test_results.items():
         print(f"{test:12}: {'PASS' if status else 'FAIL'}")
 
+
 def invupper(R):
     """
     invupper - Sovrascrive una matrice triangolare superiore invertibile con la propria inversa
@@ -90,17 +92,18 @@ def invupper(R):
     """
     # Aggiungere opportuni controlli sull’input
     [m, n] = R.shape
-    if not np.diag(R).all(): # R ha almeno un elemento diagonale nullo
+    if not np.diag(R).all():  # R ha almeno un elemento diagonale nullo
         raise ValueError("elementi nulli sulla diagonale: matrice R non invertibile")
-    if R.dtype != np.float64: 
-        R = np.float64( R ) # per avere massima accuratezza nei calcoli
-        
-    R[n-1, n-1] = 1.0 / R[n-1, n-1]
-    for i in range( n-2, -1, -1 ):
+    if R.dtype != np.float64:
+        R = np.float64(R)  # per avere massima accuratezza nei calcoli
+
+    R[n - 1, n - 1] = 1.0 / R[n - 1, n - 1]
+    for i in range(n - 2, -1, -1):
         R[i, i] = 1.0 / R[i, i]
-        for j in range( n-1, i, -1 ):
-            R[i, j] = -np.dot( R[i, i+1 : j+1 ], R[ i+1 : j+1, j] ) * R[i, i]
+        for j in range(n - 1, i, -1):
+            R[i, j] = -np.dot(R[i, i + 1 : j + 1], R[i + 1 : j + 1, j]) * R[i, i]
     return R
+
 
 def utrisol(R, b):
     """
@@ -114,7 +117,7 @@ def utrisol(R, b):
     n, m = R.shape
     if n != m:
         raise ValueError("R must be a quadrat matrix..")
-    
+
     if b.shape[0] != n:
         raise ValueError("b must have the same number of rows as R...")
 
@@ -158,28 +161,194 @@ def ltrisol(L: np.ndarray, b: np.ndarray):
         L[i + 1 : n, i] *= b[i]
         b[i + 1 : n] -= L[i + 1 : n, i]
 
+
 def gaussDiag(A: np.ndarray) -> np.float64:
     """
     In-place LR factorization of A using Gauss elimination algorithm
-    with diagonal strategy. Solution (if A non-singular) will be placed in b
+    with diagonal strategy.
 
-    Returns det(A), if 0 then A is singular and his pseudorank(A) != rank([A|b])
+    Returns det(A), if 0 then A is singular.
     """
-    n, m = A.shape[0]
-    
+    n, m = A.shape
+
     np.float64(A)
     tol = np.finfo(np.float64).eps * norm(A, np.inf)
 
     for i in range(0, min(n, m) - 1):
         # check for too small pivot
-        if np.abs(A[i,i]) < tol: return 0
+        if np.abs(A[i, i]) < tol:
+            raise ValueError(f"Pivot {i} under tolerance...")
 
         # in-place multiplicator vector
-        A[i+1:, i] /= A[i,i]
-        A[(i+1) : , (i+1): ] -= np.outer(A[(i+1): , i], A[i, (i+1): ])
+        A[i + 1 :, i] /= A[i, i]
+        A[(i + 1) :, (i + 1) :] -= np.outer(A[(i + 1) :, i], A[i, (i + 1) :])
 
     nn = min(n, m)
     L = np.tril(A[:, :nn], -1)
-    L[ range(nn), range(nn) ] = 1.0
+    L[range(nn), range(nn)] = 1.0
 
-    return L, np.triu(A, k=0)
+    return L, np.triu(A)
+
+
+def gaussPivPar(A: np.ndarray):
+    """
+    LR factorization of A using Gauss with partial pivoting on rows
+
+    Returns L, R, p, det(A) if A is non-singular, raise value error otherwise
+    """
+
+    np.float64(A)  # make sure we are using double precisoin
+    m, n = A.shape
+    tol = np.finfo(np.float64).eps * norm(A, np.inf)  # tau = e_mach * norm_inf(A)
+
+    # permutation vector
+    p = np.array(range(m), dtype=np.int64)
+
+    for k in range(min(m - 1, n)):
+        piv_i = np.fabs(A[k:, k]).argmax() + k
+        if piv_i != k:  # found a better pivot
+            if np.abs(A[piv_i, k]) < tol:  # it is too small
+                raise ValueError("Pivot too small...")
+
+            # swap rows in active matrix
+            A[[k, piv_i], :] = A[[piv_i, k], :]
+            # swap indexes in permutation vector
+            p[[k, piv_i]] = p[[piv_i, k]]
+            # in place mult vector
+            A[k + 1 :, k] /= A[k, k]
+            # trasformation on active matrix
+            A[k + 1 :, k + 1 :] -= np.outer(A[k + 1 :, k], A[k, k + 1 :])
+
+    nn = min(n, m)
+    if np.fabs(A[nn - 1, nn - 1]) < tol:  # non singular matrix
+        print(f"WARNING: last pivot under tolerance (< {tol})...")
+
+    L = np.tril(A[:, :nn], -1)
+    L[range(nn), range(nn)] = 1.0
+    return L, np.triu(A[:nn, :]), p
+
+
+import numpy as np
+
+
+def chol_in_place(A):
+    """
+    chol_in_place - Fattorizzazione "in place" di Cholesky di A (sovrascrive A)
+    Calcola il fattore di Cholesy L di A, ossia la matrice triangolare inferiore non singolare L ad
+    elementi diagonali positivi tale che A = L @ L.T
+    ATTENZIONE: sovrascrive la parte strettamente sottodiagonale di A con l’omologa parte di L.
+    SYNOPSIS: p, detA = chol_in_place(A)
+    INPUT: A (float array) - Matrice simmetrica definita positiva
+    OUTPUT: p (float array) - Diagonale del fattore di Cholesky L di A: p = np.diag( L )
+
+    detA (float) - Determinante di A
+
+    """
+    [m, n] = A.shape
+    p = np.zeros(n, dtype=np.float64)
+    detA = 1.0
+    if m != n:
+        raise ValueError("matrice dei coefficienti non quadrata")
+    for j in range(n):
+        for i in range(j, n):
+            s = A[j, i] - np.dot(A[i, 0:j], A[j, 0:j])
+            if i == j:  # elemento della diagonale principale di L
+                if s <= 0:
+                    raise ValueError("matrice non definita positiva")
+                else:
+                    detA *= s
+
+                p[j] = np.sqrt(s)
+            else:  # elemento strettamente sottodiagonale di L
+                A[i, j] = s / p[j]
+
+    return p, detA
+
+
+def givensrot(x1, x2):
+    """
+    givensrot - Rotazione elementare di Givens
+    Si determinano c ed s tali da annullare l’elemento y2
+    SINOPSYS: c, s = givensrot(x1, x2)
+    """
+    tol = np.finfo(np.float64).eps * max(abs(x1), abs(x2))
+    if abs(x2) < tol:  # se abs(x2) e’ gia’ sotto soglia, non si esegue la rotazione
+        c = 1.0
+        s = 0.0
+        return c, s
+
+    # si utilizzano le formule numericamente piu’ stabili
+    if abs(x2) >= abs(x1):
+        t = np.float64(x1) / x2
+        s = np.sign(x2) / np.sqrt(1 + t**2)
+        c = s * t
+    else:
+        t = np.float64(x2) / x1
+        c = np.sign(x1) / np.sqrt(1 + t**2)
+        s = c * t
+
+    return c, s
+
+
+def qrfact(A):
+    """
+    qrfact - Fattorizzazione QR con rotazioni di Givens (non sovrascrive A)
+    Implementazione applicabile anche al caso di matrice A non quadrata.
+    SINOPSYS: Q, R = qrfact( A )
+    OUTPUT: Q matrice ortogonale, R matrice triangolare (o trapezoidale) superiore
+    """
+    m, n = A.shape
+    tol = np.finfo(np.float64).eps * norm(A, np.inf)
+    r = min(m - 1, n)
+    Q = np.eye(m)
+    for i in range(r):
+        for j in range(i + 1, m):
+            if abs(A[j, i]) > tol:
+                c, s = givensrot(A[i, i], A[j, i])
+                # trasformazione di Givens sulle righe i-esima e j-esima
+                Gij = np.array([[c, s], [-s, c]], dtype=np.float64)
+                A[[i, j], i:n] = Gij @ A[[i, j], i:n]
+                Q[:, [i, j]] @= Gij.T
+
+    # Si possono rendere non negativi gli elementi diagonali di R:
+    for i in range(min(m, n)):
+        if A[i, i] < 0:
+            A[i, i:n] = -A[i, i:n]
+            Q[:, i] = -Q[:, i]
+
+    return Q, np.triu(A)
+
+
+def gaussjordan(A):
+    """Inversa di una matrice con Gauss-Jordan + pivoting parziale"""
+
+    m, n = A.shape
+    if m != n:  # matrice non quadrata, non invertibile...
+        raise ValueError("Matrice non quadrata, quindi non invertibile...")
+
+    np.float64(A)
+    tol = np.finfo(np.float64).eps * norm(A, np.inf)
+
+    p = np.arange(m, dtype=np.int64)
+
+    A = np.column_stack((A, np.eye(m)))
+
+    for k in range(m):
+        piv_i = np.abs(A[:, k]).argmax()
+        if np.abs(A[piv_i, k]) < tol:
+            raise ValueError(
+                "Pivot troppo piccolo, matrice non numericamente invertibile..."
+            )
+
+        if piv_i != k:  # esegui permutazione di righe
+            A[piv_i, :], A[k, :] = A[k, :], A[piv_i]
+            p[piv_i], p[k] = p[k], p[piv_i]
+
+        idx = np.hstack((np.arange(0, k), np.arange(k + 1, m)))
+
+        # calcolo in-place dei moltiplicatori
+        A[idx, k] /= A[k, k]
+        # applicazione trasformazione
+        A[idx, k + 1 :] -= np.outer(A[idx, k], A[k, (k + 1) :])
+
+    A = np.array(A[k, range(n, 2 * n)] / A[k, k] for k in range(m))
