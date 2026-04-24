@@ -343,3 +343,29 @@ def gaussjordan( A ):
             raise ValueError(f"elemento pivot di modulo troppo piccolo (< tol = {tol})")
     
     return np.array( [ A[k, range(n, 2*n)] / A[k, k] for k in range( m ) ] )
+
+def jacobi(A, b, x, maxit, tol):
+    
+    m, n = A.shape
+    if(m != n):
+        raise ValueError("A must be a n x n matrix...")
+    
+    d = np.diag(A)
+    tau = np.finfo(np.float64).eps * norm(d, np.inf)
+    if(np.any(np.abs(d) < tau)):
+        raise ValueError("Diagonal elements too small...")
+    
+    # Calcolo matrice di Jacobi e vettore costante c in-place
+    J = A = (-np.triu(A, k=1) - np.tril(A, k=-1)) / d
+    c = b / d
+    for k in range(maxit):
+        x_prev = x.copy()
+        x = J @ x_prev + c # calculate next x
+
+        if norm(x_prev - x, np.inf) < tol * norm(x, np.inf): # reached precision desired 
+            break
+
+    if k >= maxit-1:
+        print(f"WARNING: reached max iteration ({maxit}) requested before requested precision...")
+
+    return k
