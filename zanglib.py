@@ -356,16 +356,67 @@ def jacobi(A, b, x, maxit, tol):
         raise ValueError("Diagonal elements too small...")
     
     # Calcolo matrice di Jacobi e vettore costante c in-place
-    J = A = (-np.triu(A, k=1) - np.tril(A, k=-1)) / d
+    J = A = -(np.triu(A, k=1) + np.tril(A, k=-1)) / d
     c = b / d
     for k in range(maxit):
         x_prev = x.copy()
         x = J @ x_prev + c # calculate next x
 
-        if norm(x_prev - x, np.inf) < tol * norm(x, np.inf): # reached precision desired 
+        if norm(x_prev - x, np.inf) < (tol * norm(b, np.inf)): # reached precision desired 
             break
 
     if k >= maxit-1:
         print(f"WARNING: reached max iteration ({maxit}) requested before requested precision...")
 
-    return k
+    return x, k
+
+def gaussSeidel(A, b, x, maxit, tol):
+
+    m, n = A.shape
+    if m != n: 
+        raise ValueError("A must be a square matrix")
+    
+    tau = np.finfo(np.float64).eps * norm(A, np.inf)
+    if any(np.abs(np.diag(A)) < tau):
+        raise ValueError("Element(s) on A diagonal under numerical tolerance...")
+    
+    for k in range(1, maxit + 1, 1):
+        x_curr = x.copy()
+        for i in range(n):
+            sum_ax = (A[i, :i] @ x[:i]) + (A[i, i+1:] @ x[i+1: ])
+            x[i] = (b[i] - sum_ax) / A[i, i]
+
+        if norm(x - x_curr, np.inf) < (tol * norm(b, np.inf)):
+            break;
+
+    if(k >= maxit):
+        print(f"WARNING: Gauss-Seidel exceeded max iteration ({maxit})...")
+
+    return x, k
+
+def sor(A, b, x, maxit, tol, w: np.float64 = 1.):
+
+    m, n = A.shape
+    if m != n:
+        raise ValueError("A must be a square matrix...")
+    
+    if m != b.shape[0]:
+        raise ValueError("b must have of the numel of A columns...")
+    
+    tau = np.finfo(np.float64).eps * norm(A, np.inf)
+    if any(np.abs(np.diag(A)) < tau):
+        raise ValueError("elements on A diagonal too small...")
+    
+    for k in range(1, maxit+1, 1):
+        x_curr = x.copy()
+        for i in range(n):
+            sum_ax = A[i, :i] @ x[:i] + A[i, i+1:] @ x[i+1:]
+            x[i] = (1 - w)*x_curr[i] + w*((b[i] - sum_ax) / A[i, i])
+
+        if norm(x - x_curr, np.inf) < (tol * norm(b, np.inf)): # reached desired precision
+            break;    
+
+    if k >= maxit:
+        print("WARNING: SOR reached max iterations before requested precision...")
+
+    return x, k
