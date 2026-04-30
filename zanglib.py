@@ -420,3 +420,28 @@ def sor(A, b, x, maxit, tol, w: np.float64 = 1.):
         print("WARNING: SOR reached max iterations before requested precision...")
 
     return x, k
+
+def polyLagrange(x, y, punti):
+    # polyLagrange - Polinomio interpolante nella forma di Lagrange
+    # INPUT
+    # x (float array) - vettore dei nodi o punti di osservazione
+    # y (float array) - vettore delle osservazioni
+    # punti (float array) - vettore dei punti in cui calcolare il polinomio di Lagrange
+    # OUTPUT
+    # p (float array) - valore del polinomio nel vettore ’punti’
+    # coeff (float array) - coefficienti della base di Lagrange
+    n1 = y.size; coeff = np.zeros( x.size ); p = np.zeros( punti.size )
+    for k in range( n1 ):
+        idxk = np.hstack( ( np.arange(k, dtype = np.int32), np.arange(k+1, n1, dtype = np.int32) ) )
+        coeff[k] = y[k] / ( x[k] - x[idxk] ).prod()
+    
+    for j in range( punti.size ):
+        ij = ( punti[j] == x ).nonzero()
+        if ( (ij is None) or (not ij[0].size) ):
+            # calcolo del valore del polinomio di Lagrange in punti[j]
+            p[j] = ( punti[j] - x ).prod() * sum( coeff / (punti[j] - x) )
+        else:
+            # punti[j] e’ parte del vettore dei nodi: si restituisce il corrispondente y
+            p[j] = y[ ij[0][0] ]
+            
+    return coeff, p
