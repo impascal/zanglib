@@ -4,6 +4,7 @@ from timeit import default_timer as timer
 from matplotlib import pyplot as plt
 
 DIM = 6
+np.set_printoptions(precision=8, suppress=False)
 
 def soldiag_test():
     A = np.diag(np.random.rand(DIM))
