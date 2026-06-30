@@ -82,6 +82,32 @@ def check_and_test():
     for test, status in test_results.items():
         print(f"{test:12}: {'PASS' if status else 'FAIL'}")
 
+def soldiag(D, b):
+    """
+    soldiag - Returns solution of a diagonal linear system
+    SYNOPSIS: 
+        A = soldiag(A, b)
+    INPUT: 
+        A (float array) - Diagonal matrix
+        b (float array) - constant vector
+    """
+
+    # check inputs
+    [m, n] = D.shape
+    if m != n:
+        raise ValueError("D must be a square matrix...")
+    
+    # extract diagonal
+    d = np.diag(D)
+    if not d.all(): # At least one element of d is zero
+        raise ValueError("diagonal has at least one zero element...")
+    
+    # convert to float64 if necessary
+    if (d.dtype != np.float64): d = np.float64(d)
+    if (b.dtype != np.float64): d = np.float64(d)
+
+    # return solution
+    return b / d
 
 def invupper(R):
     """
