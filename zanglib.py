@@ -134,6 +134,7 @@ def invupper(R):
 def utrisol(R, b):
     """
     Solve linear system Rx = b using backward subtitution
+    and columns algorithm.
     R is maintained and solution is put in b
     PARAMETERS:
         R: Numpy upper triangular matrix
@@ -151,10 +152,16 @@ def utrisol(R, b):
     if any(np.abs(np.diag(R)) < eps):
         raise ValueError("Some value of R are numerically too small...")
 
-    for i in range(R.shape[0] - 1, -1, -1):
-        b[i] /= R[i, i]
-        b[0:i] -= R[0:i, i] * b[i]
+    if b.dtype != np.float64: b = np.float64(b)
+    if R.dtype != np.float64: R = np.float64(R)
 
+    for i in range(n - 1, -1, -1):
+        b[i] /= R[i, i] # find x[i]
+
+        # multiply every coefficient on column with x[i]
+        # and subcract found column to b
+        b[0:i] -= R[0:i, i] * b[i] 
+    return b
 
 def ltrisol(L: np.ndarray, b: np.ndarray):
     """
